@@ -79,36 +79,40 @@ public class MarineNewsCrawlService {
     private void getContents() throws IOException {
         Document document = Jsoup.connect(url).get();
 
-        // Hrefs
-        Elements thumbElements = document.select("a.thumb");
-        thumbElements.forEach(e -> hrefList.add(e.attr("href")));
-
         // Titles
-        Elements titles = document.select("h4.titles");
-        titles.forEach(title -> {
+        Elements titleElements = document.select("h4.titles");
+        for (Element title : titleElements) {
             Element link = title.selectFirst("a");
-            String titleContent = link != null ? link.text().trim() : "";
-            titleList.add(titleContent);
-        });
 
-        // Contents
-        hrefList.forEach(href -> {
-            if (!href.isEmpty()) {
-                Document innerDoc;
-                try {
-                    innerDoc = Jsoup.connect(baseUrl + href).get();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+            // Hrefs
+            String href = Objects.requireNonNull(link).attr("href");
+            // Titles
+            String titleContent = link.text().trim();
 
-                Element contentDiv = innerDoc.getElementById("article-view-content-div");
-                Elements paragraphs = Objects.requireNonNull(contentDiv).select("p");
-
-                List<String> content = new ArrayList<>();
-                paragraphs.forEach(p -> content.add(p.text().trim()));
-
-                contentList.add(content);
+            // Article Contents
+            Document innerDoc;
+            try {
+                innerDoc = Jsoup.connect(baseUrl + href).get();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        });
+
+            Element contentDiv = innerDoc.getElementById("article-view-content-div");
+            if (contentDiv == null) {
+                break;
+            }
+
+            String contentDivText = contentDiv.text().trim();
+            Elements paragraphs = Objects.requireNonNull(contentDiv).select("p");
+
+            List<String> content = new ArrayList<>();
+            paragraphs.forEach(p -> content.add(p.text().trim()));
+
+            if (content.isEmpty()) contentList.add(Collections.singletonList(contentDivText));
+            else contentList.add(content.subList(0, 3));
+
+            hrefList.add(href);
+            titleList.add(titleContent);
+        }
     }
 }
