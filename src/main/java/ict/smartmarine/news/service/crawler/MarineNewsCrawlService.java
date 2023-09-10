@@ -1,5 +1,6 @@
 package ict.smartmarine.news.service.crawler;
 
+import ict.smartmarine.news.config.MarineNewsConfig;
 import ict.smartmarine.news.model.MarineSubsectionCode;
 import ict.smartmarine.news.model.dto.MarineNewsDto;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -15,14 +17,14 @@ import java.io.IOException;
 import java.util.*;
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
+@Slf4j
 public class MarineNewsCrawlService {
 
-    private static final int MAX_CONTENT_PARAGRAPH_SIZE = 3;
-    private static final String url = "http://www.maritimepress.co.kr";
+    private final MarineNewsConfig marineNewsConfig;
 
-    private String baseUrl = "http://www.maritimepress.co.kr/news/articleList.html";
+    private static final int MAX_CONTENT_PARAGRAPH_SIZE = 3;
+    private String baseUrl;
 
     private final List<MarineNewsDto> marineNewsResult = new ArrayList<>();
     private final List<String> hrefList = new ArrayList<>();
@@ -57,7 +59,7 @@ public class MarineNewsCrawlService {
         for (int i = 0; i < contentList.size()-1; i++) {
             MarineNewsDto responseDto = MarineNewsDto.builder()
                     .title(titleList.get(i))
-                    .link(url + hrefList.get(i))
+                    .link(marineNewsConfig.getUrl() + hrefList.get(i))
                     .content(String.valueOf(contentList.get(i)))
                     .build();
             marineNewsResult.add(responseDto);
@@ -69,7 +71,7 @@ public class MarineNewsCrawlService {
 
     private void initUrl(String code){
 
-        baseUrl = UriComponentsBuilder.fromUriString(baseUrl)
+        baseUrl = UriComponentsBuilder.fromUriString(marineNewsConfig.getBaseUrl())
                 .queryParam("sc_sub_section_code", code)
                 .queryParam("view_type", "23")
                 .toUriString();
@@ -94,7 +96,7 @@ public class MarineNewsCrawlService {
             // Article Contents
             Document innerDoc;
             try {
-                innerDoc = Jsoup.connect(url + href).get();
+                innerDoc = Jsoup.connect(marineNewsConfig.getUrl() + href).get();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
