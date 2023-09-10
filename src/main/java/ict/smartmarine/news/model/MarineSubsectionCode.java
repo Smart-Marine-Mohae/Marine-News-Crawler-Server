@@ -25,8 +25,6 @@ public enum MarineSubsectionCode {
     THIRD_PARTY_LOGISTICS("S2N14", "3PL외주", MarineSectionCateogry.CARGO),
     LAND_TRANSPORT("S2N15", "육상운송", MarineSectionCateogry.CARGO);
 
-
-
     private final String code;
     private final String description;
     private final MarineSectionCateogry category;

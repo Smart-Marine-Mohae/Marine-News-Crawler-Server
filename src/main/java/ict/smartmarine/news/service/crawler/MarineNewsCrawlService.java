@@ -1,6 +1,5 @@
 package ict.smartmarine.news.service.crawler;
 
-import ict.smartmarine.news.config.MarineNewsConfig;
 import ict.smartmarine.news.model.MarineSubsectionCode;
 import ict.smartmarine.news.model.dto.MarineNewsDto;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +18,11 @@ import java.util.*;
 @Slf4j
 @RequiredArgsConstructor
 public class MarineNewsCrawlService {
-    private final MarineNewsConfig marineNewsConfig;
 
-    private String baseUrl;
-    private String url;
+    private static final int MAX_CONTENT_PARAGRAPH_SIZE = 3;
+    private static final String url = "http://www.maritimepress.co.kr";
+
+    private String baseUrl = "http://www.maritimepress.co.kr/news/articleList.html";
 
     private final List<MarineNewsDto> marineNewsResult = new ArrayList<>();
     private final List<String> hrefList = new ArrayList<>();
@@ -57,7 +57,7 @@ public class MarineNewsCrawlService {
         for (int i = 0; i < contentList.size()-1; i++) {
             MarineNewsDto responseDto = MarineNewsDto.builder()
                     .title(titleList.get(i))
-                    .link(baseUrl + hrefList.get(i))
+                    .link(url + hrefList.get(i))
                     .content(String.valueOf(contentList.get(i)))
                     .build();
             marineNewsResult.add(responseDto);
@@ -69,30 +69,32 @@ public class MarineNewsCrawlService {
 
     private void initUrl(String code){
 
-        baseUrl = marineNewsConfig.getBaseUrl();
-        url = UriComponentsBuilder.fromUriString(marineNewsConfig.getUrl())
+        baseUrl = UriComponentsBuilder.fromUriString(baseUrl)
                 .queryParam("sc_sub_section_code", code)
-                .queryParam("view_type", marineNewsConfig.getViewType())
+                .queryParam("view_type", "23")
                 .toUriString();
     }
 
     private void getContents() throws IOException {
-        Document document = Jsoup.connect(url).get();
+        Document document = Jsoup.connect(baseUrl).get();
 
         // Titles
         Elements titleElements = document.select("h4.titles");
+
         for (Element title : titleElements) {
+
             Element link = title.selectFirst("a");
 
             // Hrefs
             String href = Objects.requireNonNull(link).attr("href");
+
             // Titles
             String titleContent = link.text().trim();
 
             // Article Contents
             Document innerDoc;
             try {
-                innerDoc = Jsoup.connect(baseUrl + href).get();
+                innerDoc = Jsoup.connect(url + href).get();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -102,17 +104,18 @@ public class MarineNewsCrawlService {
                 break;
             }
 
-            String contentDivText = contentDiv.text().trim();
             Elements paragraphs = Objects.requireNonNull(contentDiv).select("p");
 
             List<String> content = new ArrayList<>();
             paragraphs.forEach(p -> content.add(p.text().trim()));
+            
+            if (!content.isEmpty()) {
+                if (content.size() > MAX_CONTENT_PARAGRAPH_SIZE) contentList.add(content.subList(0, MAX_CONTENT_PARAGRAPH_SIZE));
+                else contentList.add(content.subList(0, content.size()));
 
-            if (content.isEmpty()) contentList.add(Collections.singletonList(contentDivText));
-            else contentList.add(content.subList(0, 3));
-
-            hrefList.add(href);
-            titleList.add(titleContent);
+                hrefList.add(href);
+                titleList.add(titleContent);
+            }
         }
     }
 }
